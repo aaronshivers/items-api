@@ -1,23 +1,29 @@
 const mongoose = require('mongoose')
 
+const {
+  MONGO_USER,
+  MONGO_PASS,
+  MONGO_CLUSTER,
+  NODE_ENV,
+} = process.env
+
+const uri = `mongodb+srv://${ MONGO_CLUSTER }.mongodb.net`
+const encodedUri = encodeURI(uri)
+
 const options = {
   useNewUrlParser: true,
   useCreateIndex: true,
-  useUnifiedTopology: true,
   useFindAndModify: false,
+  retryWrites: true,
+  useUnifiedTopology: true,
+  user: MONGO_USER,
+  pass: MONGO_PASS,
+  dbName: NODE_ENV,
 }
-
-let server = '';
-
-// if (process.env.NODE_ENV === 'development') {
-//   server = 'mongodb://localhost:27017/notes'
-// } else {
-  server = 'mongodb://mongo:/mean-notes'
-// }
 
 const connectToDB = async () => {
   try {
-    const conn = await mongoose.connect(server, options)
+    const conn = await mongoose.connect(encodedUri, options)
     console.log(`MongoDB Connected: ${ conn.connection.host }`)
   } catch (error) {
     console.log(error.message)

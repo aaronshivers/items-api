@@ -5,25 +5,45 @@ const jwt = require('jsonwebtoken')
 
 const app = require('../../app')
 const Note = require('../../models/notes')
+const User = require('../../models/users')
+
+const createUser = async () => {
+  const userObj = {
+    _id: new ObjectId(),
+    email: 'user@test.com',
+    password: 'asdfASDF1234!@#$',
+  }
+
+  const user = await new User(userObj).save()
+  user.tokens.token = await user.generateAuthToken()
+
+  return user
+}
+
+const createNote = async (userId) => {
+  const noteObj = {
+    _id: new ObjectId(),
+    text: 'note1',
+    completed: false,
+    creator: userId
+  }
+
+  return await new Note(noteObj).save()
+}
 
 describe('/notes', () => {
   let note
+  let user
   let token
 
   beforeEach(async () => {
-    const _id = new ObjectId()
-    token = jwt.sign({ _id }, process.env.JWT_SECRET)
-
-    note = {
-      _id,
-      text: 'note1',
-      tokens: [ {
-        token,
-      } ],
-    }
-
+    await User.deleteMany()
     await Note.deleteMany()
-    await new Note(note).save()
+
+    user = await createUser()
+    note = await createNote(user._id)
+
+    token = user.tokens[0].token
   })
 
   describe('POST /notes', () => {
@@ -58,6 +78,16 @@ describe('/notes', () => {
         const foundNote = await Note.findOne({ text: note.text })
         expect(foundNote).toBeTruthy()
         expect(foundNote.text).toEqual(note.text)
+      })
+
+      it('should add the `creator ID` to the note', async () => {
+        await request(app)
+          .post('/notes')
+          .send(note)
+          .set('Authorization', `Bearer ${ token }`)
+
+        const foundNote = await Note.findOne({ text: note.text })
+        expect(foundNote.creator).toEqual(user._id)
       })
 
       it('should add a second note', async () => {

@@ -17,6 +17,10 @@ const notesSchema = new Schema({
     required: false,
     default: false
   },
+  creator: {
+    type: Schema.Types.ObjectId,
+    ref: 'User'
+  },
   createdAt: {
     type: Date,
     default: Date.now(),

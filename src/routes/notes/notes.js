@@ -11,8 +11,11 @@ router.post('/notes', auth, async (req, res) => {
     // get text from the body
     const { text } = req.body
 
+    // get user id
+    const { _id } = req.user
+
     // create new note
-    const note = new Note({ text })
+    const note = new Note({ text, creator: _id })
 
     // save note
     await note.save()

@@ -1,7 +1,6 @@
 const expect = require('expect')
 const request = require('supertest')
 const { ObjectId } = require('mongodb')
-const jwt = require('jsonwebtoken')
 
 const app = require('../../app')
 const Note = require('../../models/notes')
@@ -101,53 +100,58 @@ describe('/notes', () => {
         expect(foundNotes.length).toBe(2)
       })
     })
+  })
 
-    describe('GET /notes', () => {
+  describe('GET /notes', () => {
 
-      describe('if an `auth token` is not provided', () => {
+    describe('if an `auth token` is not provided', () => {
 
-        it('should respond 401', async () => {
+      it('should respond 401', async () => {
+        await request(app)
+          .post('/notes')
+          .send(note)
+          .expect(401)
+      })
+    })
+
+    describe('if an `auth token` is provided', () => {
+
+      describe('if there are zero notes in the DB', () => {
+
+        beforeEach(async () => await Note.deleteMany())
+
+        it('should respond 200', async () => {
           await request(app)
-            .post('/notes')
-            .send(note)
-            .expect(401)
+            .get('/notes')
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(200)
+        })
+
+        it('should return an error message', async () => {
+          await request(app)
+            .get('/notes')
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(res => {
+              expect(res.text)
+                .toEqual(JSON.stringify({ error: 'No Notes Found' }))
+            })
+        })
+
+        it('should have nothing in the database', async () => {
+          await request(app)
+            .get('/notes')
+            .set('Authorization', `Bearer ${ token }`)
+
+          const foundNotes = await Note.find()
+          expect(foundNotes.length).toBe(0)
         })
       })
 
-      describe('if an `auth token` is provided', () => {
+      describe('if there are notes in the DB', () => {
 
-        describe('if there are zero notes', () => {
+        describe('and the `user` is not the `creator`', () => {})
 
-          beforeEach(async () => await Note.deleteMany())
-
-          it('should respond 200', async () => {
-            await request(app)
-              .get('/notes')
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(200)
-          })
-
-          it('should return an error message', async () => {
-            await request(app)
-              .get('/notes')
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(res => {
-                expect(res.text)
-                  .toEqual(JSON.stringify({ error: 'No Notes Found' }))
-              })
-          })
-
-          it('should have nothing in the database', async () => {
-            await request(app)
-              .get('/notes')
-              .set('Authorization', `Bearer ${ token }`)
-
-            const foundNotes = await Note.find()
-            expect(foundNotes.length).toBe(0)
-          })
-        })
-
-        describe('if there are notes', () => {
+        describe('and the `user` is the `creator`', () => {
 
           it('should respond 200', async () => {
             await request(app)
@@ -167,240 +171,240 @@ describe('/notes', () => {
         })
       })
     })
+  })
 
-    describe('GET /notes/:id', () => {
+  describe('GET /notes/:id', () => {
 
-      describe('if an `auth token` is not provided', () => {
+    describe('if an `auth token` is not provided', () => {
 
-        it('should respond 401', async () => {
+      it('should respond 401', async () => {
+        await request(app)
+          .post('/notes')
+          .send(note)
+          .expect(401)
+      })
+    })
+
+    describe('if an `auth token` is provided', () => {
+
+      describe('if `id` is invalid', () => {
+
+        it('should respond 400', async () => {
           await request(app)
-            .post('/notes')
-            .send(note)
-            .expect(401)
+            .get(`/notes/1234`)
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(400)
         })
       })
 
-      describe('if an `auth token` is provided', () => {
+      describe('if `id` is valid', () => {
 
-        describe('if `id` is invalid', () => {
+        describe('and no note is found', () => {
 
-          it('should respond 400', async () => {
+          it('should respond 404', async () => {
             await request(app)
-              .get(`/notes/1234`)
+              .get(`/notes/5e4983e0186afc3c3b684bbb`)
+              .expect(404)
               .set('Authorization', `Bearer ${ token }`)
-              .expect(400)
+              .expect(res => {
+                expect(res.text)
+                  .toEqual(JSON.stringify({ error: 'Note Not Found' }))
+              })
           })
         })
 
-        describe('if `id` is valid', () => {
+        describe('and the note is found', () => {
 
-          describe('and no note is found', () => {
-
-            it('should respond 404', async () => {
-              await request(app)
-                .get(`/notes/5e4983e0186afc3c3b684bbb`)
-                .expect(404)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(res => {
-                  expect(res.text)
-                    .toEqual(JSON.stringify({ error: 'Note Not Found' }))
-                })
-            })
+          it('should respond 200', async () => {
+            await request(app)
+              .get(`/notes/${ note._id }`)
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(200)
           })
 
-          describe('and the note is found', () => {
-
-            it('should respond 200', async () => {
-              await request(app)
-                .get(`/notes/${ note._id }`)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(200)
-            })
-
-            it('should return the specified note', async () => {
-              await request(app)
-                .get(`/notes/${ note._id }`)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(res => {
-                  expect(res.text).toContain(note._id)
-                  expect(res.text).toContain(note.text)
-                })
-            })
+          it('should return the specified note', async () => {
+            await request(app)
+              .get(`/notes/${ note._id }`)
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(res => {
+                expect(res.text).toContain(note._id)
+                expect(res.text).toContain(note.text)
+              })
           })
         })
       })
     })
+  })
 
-    describe('DELETE /notes/:id', () => {
+  describe('DELETE /notes/:id', () => {
 
-      describe('if an `auth token` is not provided', () => {
+    describe('if an `auth token` is not provided', () => {
 
-        it('should respond 401', async () => {
+      it('should respond 401', async () => {
+        await request(app)
+          .post('/notes')
+          .send(note)
+          .expect(401)
+      })
+    })
+
+    describe('if an `auth token` is provided', () => {
+
+      describe('if `id` is invalid', () => {
+
+        it('should respond 400', async () => {
           await request(app)
-            .post('/notes')
-            .send(note)
-            .expect(401)
+            .delete(`/notes/1234`)
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(400)
+        })
+
+        it('should not delete any notes', async () => {
+          await request(app)
+            .delete(`/notes/1234`)
+            .set('Authorization', `Bearer ${ token }`)
+
+          const foundNotes = await Note.find()
+          expect(foundNotes).toBeTruthy()
+          expect(foundNotes.length).toBe(1)
         })
       })
 
-      describe('if an `auth token` is provided', () => {
+      describe('if `id` is valid', () => {
 
-        describe('if `id` is invalid', () => {
+        describe('and note does not exist', () => {
 
-          it('should respond 400', async () => {
+          it('should respond 404', async () => {
             await request(app)
-              .delete(`/notes/1234`)
+              .delete(`/notes/5e547e0d22e5ea5888ca32d2`)
               .set('Authorization', `Bearer ${ token }`)
-              .expect(400)
+              .expect(404)
           })
 
-          it('should not delete any notes', async () => {
+          it('should return an error message', async () => {
             await request(app)
-              .delete(`/notes/1234`)
+              .delete(`/notes/5e547e0d22e5ea5888ca32d2`)
               .set('Authorization', `Bearer ${ token }`)
-
-            const foundNotes = await Note.find()
-            expect(foundNotes).toBeTruthy()
-            expect(foundNotes.length).toBe(1)
+              .expect(res => {
+                expect(res.text)
+                  .toEqual(JSON.stringify({ error: 'Note Not Found' }))
+              })
           })
         })
 
-        describe('if `id` is valid', () => {
+        describe('and note does exist', () => {
 
-          describe('and note does not exist', () => {
-
-            it('should respond 404', async () => {
-              await request(app)
-                .delete(`/notes/5e547e0d22e5ea5888ca32d2`)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(404)
-            })
-
-            it('should return an error message', async () => {
-              await request(app)
-                .delete(`/notes/5e547e0d22e5ea5888ca32d2`)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(res => {
-                  expect(res.text)
-                    .toEqual(JSON.stringify({ error: 'Note Not Found' }))
-                })
-            })
-          })
-
-          describe('and note does exist', () => {
-
-            it('should respond 200', async () => {
-              await request(app)
-                .delete(`/notes/${ note._id }`)
-                .set('Authorization', `Bearer ${ token }`)
-                .expect(200)
-            })
+          it('should respond 200', async () => {
+            await request(app)
+              .delete(`/notes/${ note._id }`)
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(200)
           })
         })
       })
     })
+  })
 
-    describe('PATCH /notes/:id', () => {
+  describe('PATCH /notes/:id', () => {
 
-      describe('if an `auth token` is not provided', () => {
+    describe('if an `auth token` is not provided', () => {
 
-        it('should respond 401', async () => {
+      it('should respond 401', async () => {
+        await request(app)
+          .post('/notes')
+          .send(note)
+          .expect(401)
+      })
+    })
+
+    describe('if an `auth token` is provided', () => {
+
+      describe('if `id` is invalid', () => {
+
+        it('should respond 400', async () => {
           await request(app)
-            .post('/notes')
-            .send(note)
-            .expect(401)
+            .patch(`/notes/1234`)
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(400)
         })
       })
 
-      describe('if an `auth token` is provided', () => {
+      describe('if `id` is valid', () => {
 
-        describe('if `id` is invalid', () => {
+        describe('and if `id` is not in the DB', () => {
 
-          it('should respond 400', async () => {
+          it('should respond 404', async () => {
             await request(app)
-              .patch(`/notes/1234`)
+              .patch(`/notes/` + new ObjectId())
               .set('Authorization', `Bearer ${ token }`)
-              .expect(400)
+              .expect(404)
+          })
+
+          it('should return an error message', async () => {
+            await request(app)
+              .patch(`/notes/` + new ObjectId())
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(res => {
+                expect(res.text)
+                  .toEqual(JSON.stringify({ error: 'Note Not Found' }))
+              })
           })
         })
 
-        describe('if `id` is valid', () => {
+        describe('and if `id` is in the DB', () => {
 
-          describe('and if `id` is not in the DB', () => {
+          describe('and if updated data is invalid', () => {
+            const update = { completed: 1234 }
 
-            it('should respond 404', async () => {
+            it('should respond 400', async () => {
               await request(app)
-                .patch(`/notes/` + new ObjectId())
+                .patch(`/notes/${ note._id }`)
+                .expect(400)
                 .set('Authorization', `Bearer ${ token }`)
-                .expect(404)
+                .send(update)
             })
 
             it('should return an error message', async () => {
               await request(app)
-                .patch(`/notes/` + new ObjectId())
+                .patch(`/notes/${ note._id }`)
+                .send(update)
                 .set('Authorization', `Bearer ${ token }`)
                 .expect(res => {
                   expect(res.text)
-                    .toEqual(JSON.stringify({ error: 'Note Not Found' }))
+                    .toEqual(JSON.stringify({ error: 'Completed Must be Boolean' }))
                 })
+            })
+
+            it('should not update the specified note', async () => {
+              await request(app)
+                .patch(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .send(update)
+
+              const foundNote = await Note.findById(note._id)
+              expect(foundNote.completed).toBe(false)
             })
           })
 
-          describe('and if `id` is in the DB', () => {
+          describe('and if updated data is valid', () => {
+            const update = { completed: true }
 
-            describe('and if updated data is invalid', () => {
-              const update = { completed: 1234 }
-
-              it('should respond 400', async () => {
-                await request(app)
-                  .patch(`/notes/${ note._id }`)
-                  .expect(400)
-                  .set('Authorization', `Bearer ${ token }`)
-                  .send(update)
-              })
-
-              it('should return an error message', async () => {
-                await request(app)
-                  .patch(`/notes/${ note._id }`)
-                  .send(update)
-                  .set('Authorization', `Bearer ${ token }`)
-                  .expect(res => {
-                    expect(res.text)
-                      .toEqual(JSON.stringify({ error: 'Completed Must be Boolean' }))
-                  })
-              })
-
-              it('should not update the specified note', async () => {
-                await request(app)
-                  .patch(`/notes/${ note._id }`)
-                  .set('Authorization', `Bearer ${ token }`)
-                  .send(update)
-
-                const foundNote = await Note.findById(note._id)
-                expect(foundNote.completed).toBe(false)
-              })
+            it('should respond 201', async () => {
+              await request(app)
+                .patch(`/notes/${ note._id }`)
+                .expect(201)
+                .set('Authorization', `Bearer ${ token }`)
+                .send(update)
             })
 
-            describe('and if updated data is valid', () => {
-              const update = { completed: true }
+            it('should update the specified note', async () => {
+              await request(app)
+                .patch(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .send(update)
 
-              it('should respond 201', async () => {
-                await request(app)
-                  .patch(`/notes/${ note._id }`)
-                  .expect(201)
-                  .set('Authorization', `Bearer ${ token }`)
-                  .send(update)
-              })
-
-              it('should update the specified note', async () => {
-                await request(app)
-                  .patch(`/notes/${ note._id }`)
-                  .set('Authorization', `Bearer ${ token }`)
-                  .send(update)
-
-                const foundNote = await Note.findById(note._id)
-                expect(foundNote.completed).toBe(true)
-              })
+              const foundNote = await Note.findById(note._id)
+              expect(foundNote.completed).toBe(true)
             })
           })
         })

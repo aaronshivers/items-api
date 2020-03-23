@@ -32,7 +32,7 @@ router.post('/users', validate(userValidator), async (req, res) => {
       if (!token) return res.status(500).json({ error: 'Server Error: Token Not Created' })
 
       // respond 200 and send token
-      res.status(200).json({ idToken: token, expiresIn: 86400000 })
+      res.status(200).json({ token, expiresIn: 86400000 })
 
     } else {
 
@@ -49,7 +49,7 @@ router.post('/users', validate(userValidator), async (req, res) => {
       if (!token) return res.status(500).json({ error: 'Server Error: Token Not Created' })
 
       // respond 200 and send token
-      res.status(200).json({ idToken: token, expiresIn: 86400000 })
+      res.status(200).json({ token, expiresIn: 86400000 })
 
     }
 

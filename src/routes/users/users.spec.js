@@ -173,8 +173,7 @@ describe('/users', () => {
               .post('/users')
               .send(user)
               .expect(res => {
-                expect(res.body).toHaveProperty('idToken')
-                // todo: test for the value of idToken
+                expect(res.body.token).toBeTruthy()
               })
 
             const foundUser = await User.findOne({ email: user.email })
@@ -228,9 +227,6 @@ describe('/users', () => {
           await request(app)
             .post('/users')
             .send(newUser)
-            .expect(res => {
-              expect(res.body.user.password).not.toEqual(user.password)
-            })
 
           const foundUser = await User.findOne({ email: user.email })
           expect(foundUser.password).not.toEqual(user.password)
@@ -241,7 +237,7 @@ describe('/users', () => {
             .post('/users')
             .send(newUser)
             .expect(res => {
-              expect(res.body.user.tokens[0]).toHaveProperty('token')
+              expect(res.body.token).toBeTruthy()
             })
 
           const foundUser = await User.findOne({ email: newUser.email })
@@ -254,16 +250,6 @@ describe('/users', () => {
             .send(user)
             .expect(res => {
               expect(res.body).toHaveProperty('expiresIn')
-            })
-        })
-
-        it('should return the user data', async () => {
-          await request(app)
-            .post('/users')
-            .send(newUser)
-            .expect(res => {
-              expect(res.body.user.email).toBe(newUser.email)
-              expect(res.body.user._id).toBeTruthy()
             })
         })
 

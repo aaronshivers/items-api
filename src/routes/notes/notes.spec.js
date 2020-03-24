@@ -116,53 +116,70 @@ describe('/notes', () => {
 
     describe('if an `auth token` is provided', () => {
 
-      describe('and there are no notes found for the `creator`', () => {
+      describe('and the `user` is not the `creator`', () => {
 
-        beforeEach(async () => await Note.deleteMany())
-
-        it('should respond 200', async () => {
-          await request(app)
-            .get('/notes')
-            .set('Authorization', `Bearer ${ token }`)
-            .expect(200)
+        beforeEach(() => {
+          token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1ZTc5YWJlZTdkZDQxODU5ZGZkNjc0NmUiLCJpYXQiOjE1ODUwMzIxNzR9.HzHTbr0kV3f0ZsTQ3OCar8bApgyiPYHbVGv0OUtWXX4'
         })
 
-        it('should return an empty array', async () => {
+        it('should respond 400', async () => {
           await request(app)
-            .get('/notes')
+            .get(`/notes/1234`)
             .set('Authorization', `Bearer ${ token }`)
-            .expect(res => {
-              expect(res.body).toEqual([])
-            })
-        })
-
-        it('should have nothing in the database', async () => {
-          await request(app)
-            .get('/notes')
-            .set('Authorization', `Bearer ${ token }`)
-
-          const foundNotes = await Note.find()
-          expect(foundNotes.length).toBe(0)
+            .expect(400)
         })
       })
 
-      describe('and there are notes found for the `creator`', () => {
+      describe('and the `user` is the `creator`', () => {
 
-        it('should respond 200', async () => {
-          await request(app)
-            .get('/notes')
-            .set('Authorization', `Bearer ${ token }`)
-            .expect(200)
+        describe('and there are no notes found for the `creator`', () => {
+
+          beforeEach(async () => await Note.deleteMany())
+
+          it('should respond 200', async () => {
+            await request(app)
+              .get('/notes')
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(200)
+          })
+
+          it('should return an empty array', async () => {
+            await request(app)
+              .get('/notes')
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(res => {
+                expect(res.body).toEqual([])
+              })
+          })
+
+          it('should have nothing in the database', async () => {
+            await request(app)
+              .get('/notes')
+              .set('Authorization', `Bearer ${ token }`)
+
+            const foundNotes = await Note.find()
+            expect(foundNotes.length).toBe(0)
+          })
         })
 
-        it('should return all notes by the `creator`', async () => {
-          await request(app)
-            .get('/notes')
-            .set('Authorization', `Bearer ${ token }`)
-            .expect(res => {
-              expect(res.text).toContain(note.text)
-              expect(res.body.length).toBe(1)
-            })
+        describe('and there are notes found for the `creator`', () => {
+
+          it('should respond 200', async () => {
+            await request(app)
+              .get('/notes')
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(200)
+          })
+
+          it('should return all notes by the `creator`', async () => {
+            await request(app)
+              .get('/notes')
+              .set('Authorization', `Bearer ${ token }`)
+              .expect(res => {
+                expect(res.text).toContain(note.text)
+                expect(res.body.length).toBe(1)
+              })
+          })
         })
       })
     })

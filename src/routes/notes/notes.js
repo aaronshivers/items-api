@@ -34,11 +34,11 @@ router.get('/notes', auth, async (req, res) => {
 
   try {
 
-    // find all notes
-    const notes = await Note.find()
+    // get user info
+    const { user } = req
 
-    // throw error if there are no notes
-    if (notes.length <= 0) return res.status(200).json({ 'error': 'No Notes Found' })
+    // find all notes by creator
+    const notes = await Note.find({ creator: user._id })
 
     // return notes
     res.status(200).json(notes)

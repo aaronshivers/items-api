@@ -24,7 +24,7 @@ const createNote = async (userId) => {
     _id: new ObjectId(),
     text: 'note1',
     completed: false,
-    creator: userId
+    creator: userId,
   }
 
   return await new Note(noteObj).save()
@@ -116,7 +116,7 @@ describe('/notes', () => {
 
     describe('if an `auth token` is provided', () => {
 
-      describe('if there are zero notes in the DB', () => {
+      describe('and there are no notes found for the `creator`', () => {
 
         beforeEach(async () => await Note.deleteMany())
 
@@ -127,13 +127,12 @@ describe('/notes', () => {
             .expect(200)
         })
 
-        it('should return an error message', async () => {
+        it('should return an empty array', async () => {
           await request(app)
             .get('/notes')
             .set('Authorization', `Bearer ${ token }`)
             .expect(res => {
-              expect(res.text)
-                .toEqual(JSON.stringify({ error: 'No Notes Found' }))
+              expect(res.body).toEqual([])
             })
         })
 
@@ -147,27 +146,23 @@ describe('/notes', () => {
         })
       })
 
-      describe('if there are notes in the DB', () => {
+      describe('and there are notes found for the `creator`', () => {
 
-        describe('and the `user` is not the `creator`', () => {})
+        it('should respond 200', async () => {
+          await request(app)
+            .get('/notes')
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(200)
+        })
 
-        describe('and the `user` is the `creator`', () => {
-
-          it('should respond 200', async () => {
-            await request(app)
-              .get('/notes')
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(200)
-          })
-
-          it('should return all notes', async () => {
-            await request(app)
-              .get('/notes')
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(res => {
-                expect(res.text).toContain(note.text)
-              })
-          })
+        it('should return all notes by the `creator`', async () => {
+          await request(app)
+            .get('/notes')
+            .set('Authorization', `Bearer ${ token }`)
+            .expect(res => {
+              expect(res.text).toContain(note.text)
+              expect(res.body.length).toBe(1)
+            })
         })
       })
     })

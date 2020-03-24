@@ -54,11 +54,14 @@ router.get('/notes/:id', auth, async (req, res) => {
 
   try {
 
+    // get user info
+    const { user } = req
+
     // get note id
     const { id } = req.params
 
-    // find note by note id
-    const note = await Note.findById(id)
+    // find note by note id and user id
+    const note = await Note.findOne({ _id: id, creator: user._id })
 
     // throw error if note is not found in the DB
     if (!note) return res.status(404).json({ error: 'Note Not Found' })

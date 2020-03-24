@@ -182,7 +182,7 @@ describe('/notes', () => {
 
     describe('if an `auth token` is provided', () => {
 
-      describe('if `id` is invalid', () => {
+      describe('if `note id` is invalid', () => {
 
         it('should respond 400', async () => {
           await request(app)
@@ -192,9 +192,9 @@ describe('/notes', () => {
         })
       })
 
-      describe('if `id` is valid', () => {
+      describe('if `note id` is valid', () => {
 
-        describe('and no note is found', () => {
+        describe('and the `note` is not found', () => {
 
           it('should respond 404', async () => {
             await request(app)
@@ -208,23 +208,50 @@ describe('/notes', () => {
           })
         })
 
-        describe('and the note is found', () => {
+        describe('and the `note` is found', () => {
 
-          it('should respond 200', async () => {
-            await request(app)
-              .get(`/notes/${ note._id }`)
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(200)
+          describe('and the `user` is not the `creator`', () => {
+
+            beforeEach(() => {
+              token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI1ZTc5YWJlZTdkZDQxODU5ZGZkNjc0NmUiLCJpYXQiOjE1ODUwMzIxNzR9.HzHTbr0kV3f0ZsTQ3OCar8bApgyiPYHbVGv0OUtWXX4'
+            })
+
+            it('should respond 400', async () => {
+              await request(app)
+                .get(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .expect(400)
+            })
+
+            it('should not return the specified note', async () => {
+              await request(app)
+                .get(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .expect(res => {
+                  expect(res.text).not.toContain(note._id)
+                  expect(res.text).not.toContain(note.text)
+                })
+            })
           })
 
-          it('should return the specified note', async () => {
-            await request(app)
-              .get(`/notes/${ note._id }`)
-              .set('Authorization', `Bearer ${ token }`)
-              .expect(res => {
-                expect(res.text).toContain(note._id)
-                expect(res.text).toContain(note.text)
-              })
+          describe('and the `user` is the `creator`', () => {
+
+            it('should respond 200', async () => {
+              await request(app)
+                .get(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .expect(200)
+            })
+
+            it('should return the specified note', async () => {
+              await request(app)
+                .get(`/notes/${ note._id }`)
+                .set('Authorization', `Bearer ${ token }`)
+                .expect(res => {
+                  expect(res.text).toContain(note._id)
+                  expect(res.text).toContain(note.text)
+                })
+            })
           })
         })
       })
